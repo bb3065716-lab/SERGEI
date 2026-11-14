@@ -1,0 +1,6 @@
+{
+  "appId": "com.sergeivswalid.app",
+  "appName": "SERGEI VS WALID",
+  "webDir": "www",
+  "server": { "androidScheme": "https" }
+}

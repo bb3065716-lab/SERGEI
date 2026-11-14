@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SERGEI VS WALID</title>
+<style>
+:root{--bg:#0f1426;--card:#1a2140;--acc:#e03a3e;--tx:#eef1fa;--mu:#8f99bd}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,sans-serif;padding:env(safe-area-inset-top) 12px 24px}
+h1{text-align:center;font-size:19px;letter-spacing:2px;margin:14px 0 2px}
+.sub{text-align:center;color:var(--mu);font-size:12px;margin-bottom:10px}
+.card{background:var(--card);border-radius:14px;padding:12px;margin-bottom:10px}
+textarea,select,input[type=text],input[type=password]{width:100%;background:#0d1226;color:var(--tx);border:1px solid #2f3a66;border-radius:10px;padding:10px;font-size:15px}
+label{font-size:12px;color:var(--mu);display:block;margin:8px 0 3px}
+label.ck{display:flex;gap:8px;align-items:center;font-size:14px;color:var(--tx)}
+.row{display:flex;gap:8px}.row>*{flex:1}
+button{background:#27325c;color:var(--tx);border:0;border-radius:10px;padding:12px;font-size:14px;font-weight:600}
+button.main{background:var(--acc)}button:disabled{opacity:.45}
+#mode{width:100%;font-size:15px;padding:13px;background:var(--acc)}#mode.off{background:#2f7d4f}
+.tabs{display:flex;gap:5px;margin:8px 0}.tabs button{flex:1;background:#1a2140;padding:10px 4px;font-size:13px}.tabs button.on{background:#2f3a66;box-shadow:inset 0 -3px var(--acc)}
+#barw{height:6px;background:#27325c;border-radius:4px;margin:4px 0}#bar{height:6px;width:0;background:var(--acc);border-radius:4px;transition:width .2s}
+#st{font-size:13px;color:var(--mu);min-height:18px}.help{font-size:12px;color:var(--mu);line-height:1.5}
+#out{white-space:pre-wrap;font-size:15px;line-height:1.5;max-height:46vh;overflow:auto}
+.hide{display:none!important}
+#live{position:fixed;inset:0;background:#000;z-index:99;display:flex;flex-direction:column;padding:env(safe-area-inset-top) 14px 10px}
+#lt{flex:1;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;color:#fff;font-size:28px;line-height:1.35;padding-bottom:10px}
+#lt .ru{color:#777;font-size:.6em}#lt .dr{color:#777}
+#lc{display:flex;gap:6px}#lc button{flex:1;background:#222;padding:10px 2px}
+#ls{color:#666;font-size:12px;text-align:center;padding:4px}
+</style></head><body>
+<h1>SERGEI VS WALID</h1><div class="sub">traducteur audio RUSSE → FRANÇAIS</div>
+<div class="card"><button id="mode"></button></div>
+<div id="barw"><div id="bar"></div></div><div id="st"></div>
+<div class="tabs"><button class="tb on" data-t="t1">📁 Fichier</button><button class="tb" data-t="t2">🎙 Direct</button><button class="tb" data-t="t3">📚 Glossaire</button><button class="tb" data-t="t4">⚙ Réglages</button></div>
+
+<div id="t1" class="tab">
+ <div class="card">
+  <input type="file" id="file" accept="audio/*,video/*" class="hide">
+  <button id="pick" style="width:100%">📂 Choisir un audio / une vidéo</button>
+  <div id="fname" class="help" style="margin-top:6px"></div>
+  <div class="row" style="margin-top:8px"><button class="main" id="go">▶ Traduire</button><button id="stop">■ Annuler</button></div>
+ </div>
+ <div class="card"><div id="out" class="help">La traduction française apparaîtra ici. Les fichiers _fr.txt, _ru.txt et _fr.srt sont enregistrés à la fin.</div>
+  <div class="row" style="margin-top:8px"><button id="cp">📋 Copier le français</button><button id="shr">📤 Partager .srt</button></div></div>
+</div>
+
+<div id="t2" class="tab hide">
+ <div class="card">
+  <button class="main" id="golive" style="width:100%;padding:16px;font-size:16px">🖥 Direct plein écran</button>
+  <div class="help" style="margin-top:8px">Écran noir, texte français blanc. Gris = en cours de traitement. Le micro écoute et traduit par tranches de quelques secondes.<br>En ligne : rapide et précis. Hors-ligne : plus lent sur téléphone (choisis « Rapide » dans Réglages).</div>
+ </div>
+</div>
+
+<div id="t3" class="tab hide">
+ <div class="card">
+  <label>Glossaire russe = français (un terme par ligne ; <code>re:motif = français</code> pour une expression régulière)</label>
+  <textarea id="gloss" style="min-height:300px;font-size:13px"></textarea>
+  <div class="help" style="margin-top:6px">En ligne : le glossaire est transmis au moteur. Hors-ligne : le terme français est imposé dans la phrase avant traduction (résultat approximatif sur les accords).</div>
+ </div>
+</div>
+
+<div id="t4" class="tab hide">
+ <div class="card">
+  <label>Clé API Gemini (gratuite : aistudio.google.com) — mode en ligne</label><input type="password" id="key" placeholder="AIza…">
+  <div class="help">En mode en ligne, l'audio est envoyé à Google pour traitement.</div>
+ </div>
+ <div class="card">
+  <label>Précision hors-ligne</label>
+  <select id="prec"><option value="tiny">Rapide (≈ 40 Mo)</option><option value="base">Équilibré (≈ 80 Mo)</option><option value="small">Précis (≈ 250 Mo, lent)</option></select>
+  <button id="dl" style="width:100%;margin-top:8px">⬇ Télécharger les modèles hors-ligne (internet requis, une seule fois)</button>
+  <div class="help" style="margin-top:6px">Traduction : NLLB-600M (≈ 600 Mo). Une fois téléchargés, les modèles restent sur le téléphone.</div>
+  <label class="ck" style="margin-top:8px"><input type="checkbox" id="showru"> Afficher aussi le russe</label>
+  <button id="cc" style="width:100%;margin-top:8px">🗑 Vider la reprise des fichiers</button>
+ </div>
+</div>
+
+<div id="live" class="hide"><div id="lt"></div><div id="ls"></div>
+ <div id="lc"><button id="lm">A−</button><button id="lp">A+</button><button id="lr">RU</button><button id="lx">Effacer</button><button id="lq">✕ Quitter</button></div></div>
+
+<script type="module">
+try{
+  const T=await import("./transformers.min.js");
+  T.env.allowLocalModels=false;T.env.useBrowserCache=true;
+  T.env.backends.onnx.wasm.wasmPaths="./ort/";T.env.backends.onnx.wasm.numThreads=1;
+  window.TJS=T;
+}catch(e){window.TJS_ERR=e}
+window.dispatchEvent(new Event("tjs"));
+</script>
+<script>
+const $=id=>document.getElementById(id);
+const P=(window.Capacitor&&Capacitor.Plugins)||{};
+const GEM="gemini-2.5-flash";
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const st=m=>$("st").textContent=m;
+const setBar=p=>{$("bar").style.width=Math.max(0,Math.min(100,p))+"%"};
+const DEF_GLOSS=`﻿# Glossaire russe = français. MODIFIABLE (redémarrer le programme après modification).
+# Forme du dictionnaire à gauche : les terminaisons (cas, pluriel) sont reconnues automatiquement.
+# Pour un cas particulier, écrire une expression régulière : re:motif = français
+# Le terme français est imposé dans la traduction ; si le moteur ne le reprend pas, la phrase est retraduite sans glossaire.
+артиллерия = artillerie
+орудие = pièce d'artillerie
+гаубица = obusier
+миномёт = mortier
+снаряд = obus
+боеприпасы = munitions
+re:заряд(а|у|ом|е|ы|ов|ам|ами|ах)? = charge
+взрыватель = fusée
+ствол = tube
+отдача = recul
+прицел = appareil de pointage
+re:наводк\\w{0,3} = pointage
+наводчик = pointeur
+огневая позиция = position de tir
+наблюдательный пункт = poste d'observation
+командир батареи = commandant de batterie
+командир орудия = chef de pièce
+батарея = batterie
+азимут = azimut
+re:уг(ол|ла|лу|лом|ле)\\s+возвышени\\w{1,2} = angle d'élévation
+дальность стрельбы = portée de tir
+дальность = portée
+стрельба = tir
+re:корректировк\\w{0,3}\\s+ог(онь|ня|не|нём|ню) = correction du tir
+re:поправк\\w{0,3} = correction
+re:залп\\w{0,3} = salve
+траектория = trajectoire
+начальная скорость = vitesse initiale
+исходные данные = éléments de tir initiaux
+метеоусловия = conditions météorologiques
+re:разведк\\w{0,3} = reconnaissance
+`;
+let S={};try{S=JSON.parse(localStorage.getItem("sw_s")||"{}")}catch(e){}
+let online=S.online!==undefined?!!S.online:true,cancel=false,busy=false,file=null,segsAll=[];
+$("gloss").value=S.gloss||DEF_GLOSS;$("key").value=S.key||"";$("prec").value=S.prec||"base";$("showru").checked=!!S.showru;
+function saveS(){try{localStorage.setItem("sw_s",JSON.stringify({online,gloss:$("gloss").value,key:$("key").value.trim(),prec:$("prec").value,showru:$("showru").checked}))}catch(e){}}
+["gloss","key"].forEach(i=>$(i).addEventListener("input",saveS));["prec","showru"].forEach(i=>$(i).addEventListener("change",saveS));
+function setMode(){$("mode").textContent=online?"🌐 MODE EN LIGNE (Gemini) — toucher pour passer hors-ligne":"📴 MODE HORS-LIGNE (sur le téléphone) — toucher pour passer en ligne";$("mode").className=online?"":"off"}
+$("mode").onclick=()=>{online=!online;setMode();saveS()};setMode();
+document.querySelectorAll(".tb").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tab").forEach(t=>t.classList.add("hide"));$(b.dataset.t).classList.remove("hide");document.querySelectorAll(".tb").forEach(x=>x.classList.toggle("on",x===b))});
+try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+/* ---------- glossaire ---------- */
+const esc=s=>s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+function parseGloss(){
+  return $("gloss").value.split("\n").map(l=>l.trim()).filter(l=>l&&l[0]!=="#"&&l.includes("=")).map(l=>{
+    const i=l.indexOf("=");const a=l.slice(0,i).trim(),b=l.slice(i+1).trim();let re;
+    try{re=a.startsWith("re:")?new RegExp(a.slice(3).trim().replace(/\\w/g,"\\p{L}"),"giu"):new RegExp("(?<![\\p{L}])"+esc(a)+"[\\p{L}]{0,4}(?![\\p{L}])","giu")}catch(e){return null}
+    return{a,b,re}}).filter(Boolean).sort((x,y)=>y.a.length-x.a.length);
+}
+function glossRU(t){parseGloss().forEach(g=>{t=t.replace(g.re,g.b)});return t}
+function glossPrompt(){return parseGloss().slice(0,120).map(g=>g.a.replace(/^re:/,"").replace(/[\(\\].*$/,"").trim()+" → "+g.b).join("\n")}
+/* ---------- audio ---------- */
+async function decodeFile(f){
+  const ab=await f.arrayBuffer();
+  const ac=new (window.AudioContext||window.webkitAudioContext)({sampleRate:16000});
+  const buf=await ac.decodeAudioData(ab);
+  const n=buf.length,ch=buf.numberOfChannels,out=new Float32Array(n);
+  for(let c=0;c<ch;c++){const d=buf.getChannelData(c);for(let i=0;i<n;i++)out[i]+=d[i]/ch}
+  try{ac.close()}catch(e){}return out;
+}
+function wav16k(f){
+  const n=f.length,b=new DataView(new ArrayBuffer(44+n*2)),w=(o,s)=>[...s].forEach((c,i)=>b.setUint8(o+i,c.charCodeAt(0)));
+  w(0,"RIFF");b.setUint32(4,36+n*2,true);w(8,"WAVEfmt ");b.setUint32(16,16,true);b.setUint16(20,1,true);b.setUint16(22,1,true);
+  b.setUint32(24,16000,true);b.setUint32(28,32000,true);b.setUint16(32,2,true);b.setUint16(34,16,true);w(36,"data");b.setUint32(40,n*2,true);
+  for(let i=0;i<n;i++){const s=Math.max(-1,Math.min(1,f[i]));b.setInt16(44+i*2,s<0?s*32768:s*32767,true)}
+  return b.buffer;
+}
+const toB64=blob=>new Promise(r=>{const x=new FileReader();x.onload=()=>r(x.result.split(",")[1]);x.readAsDataURL(blob)});
+const rms=a=>{let s=0;for(let i=0;i<a.length;i+=4)s+=a[i]*a[i];return Math.sqrt(s/(a.length/4||1))};
+/* ---------- moteur en ligne : Gemini ---------- */
+async function geminiSegs(f32){
+  const key=$("key").value.trim();if(!key)throw new Error("Entre ta clé API Gemini (onglet Réglages).");
+  const b64=await toB64(new Blob([wav16k(f32)],{type:"audio/wav"}));
+  const prompt="Tu es un traducteur russe→français. Transcris fidèlement la parole russe de cet audio, puis traduis-la en français naturel. "+
+   "Respecte ce glossaire (terme russe → terme français à utiliser) :\n"+glossPrompt()+
+   "\nRéponds UNIQUEMENT par un tableau JSON : [{\"start\":secondes,\"end\":secondes,\"ru\":\"texte russe\",\"fr\":\"traduction française\"}]. Temps en secondes depuis le début de l'extrait. S'il n'y a aucune parole, réponds [].";
+  for(let a=0;a<4;a++){
+    let r,j;
+    try{r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEM}:generateContent?key=${key}`,{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({contents:[{parts:[{text:prompt},{inlineData:{mimeType:"audio/wav",data:b64}}]}],generationConfig:{responseMimeType:"application/json",temperature:0.1}})});
+      j=await r.json().catch(()=>({}))}catch(e){if(a<3){await sleep(4000);continue}throw new Error("Pas de connexion internet.")}
+    const t=r.ok&&j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts&&j.candidates[0].content.parts[0].text;
+    if(t){
+      try{const arr=JSON.parse(t.replace(/^```json|```$/g,"").trim());return arr.filter(x=>x&&(x.fr||x.ru)).map(x=>({s:+x.start||0,e:+x.end||(+x.start||0)+3,ru:x.ru||"",fr:x.fr||""}))}
+      catch(e){return[{s:0,e:f32.length/16000,ru:"",fr:t}]}
+    }
+    if((r.status===429||r.status>=500||r.ok)&&a<3){st("Attente de l'API, nouvelle tentative…");await sleep(8000);continue}
+    throw new Error((j.error&&j.error.message)||"Erreur API");
+  }
+  return[];
+}
+/* ---------- moteur hors-ligne : Whisper + NLLB (transformers.js) ---------- */
+const WM={tiny:"Xenova/whisper-tiny",base:"Xenova/whisper-base",small:"Xenova/whisper-small"};
+let asrP={},mtP=null;
+async function TJ(){if(window.TJS)return window.TJS;if(window.TJS_ERR)throw new Error("Moteur hors-ligne indisponible : "+window.TJS_ERR.message);
+  await new Promise(r=>window.addEventListener("tjs",r,{once:true}));if(!window.TJS)throw new Error("Moteur hors-ligne indisponible.");return window.TJS}
+const prg=lbl=>x=>{if(x&&x.status==="progress"&&x.total){st(`${lbl} : ${x.file.split("/").pop()} ${Math.round(x.progress)} %`);setBar(x.progress)}};
+async function getASR(){const k=$("prec").value;if(!asrP[k]){const T=await TJ();asrP[k]=T.pipeline("automatic-speech-recognition",WM[k],{dtype:"q8",progress_callback:prg("Modèle voix")}).catch(e=>{asrP[k]=null;throw e})}return asrP[k]}
+async function getMT(){if(!mtP){const T=await TJ();mtP=T.pipeline("translation","Xenova/nllb-200-distilled-600M",{dtype:"q8",progress_callback:prg("Modèle traduction")}).catch(e=>{mtP=null;throw e})}return mtP}
+async function offlineSegs(f32){
+  const asr=await getASR(),mt=await getMT();
+  st("Reconnaissance du russe…");
+  const r=await asr(f32,{language:"russian",task:"transcribe",chunk_length_s:30,stride_length_s:5,return_timestamps:true});
+  const raw=(r.chunks&&r.chunks.length?r.chunks:[{text:r.text,timestamp:[0,f32.length/16000]}]).filter(c=>c.text&&c.text.trim().length>1);
+  const out=[];
+  for(const c of raw){
+    if(cancel)break;
+    st("Traduction…");
+    const ru=c.text.trim(),o=await mt(glossRU(ru),{src_lang:"rus_Cyrl",tgt_lang:"fra_Latn",max_new_tokens:400});
+    const s=(c.timestamp&&c.timestamp[0])||0,e=(c.timestamp&&c.timestamp[1])||s+3;
+    out.push({s,e,ru,fr:(o[0]&&o[0].translation_text)||""});
+  }
+  return out;
+}
+const chunkSegs=f32=>online?geminiSegs(f32):offlineSegs(f32);
+$("dl").onclick=async()=>{
+  if(busy)return;busy=true;
+  try{st("Téléchargement du modèle voix…");await getASR();st("Téléchargement du modèle de traduction…");await getMT();st("Modèles prêts : le mode hors-ligne est utilisable sans internet.")}
+  catch(e){st("Échec : "+(e.message||e))}
+  busy=false;setBar(0);
+};
+/* ---------- sauvegarde ---------- */
+async function saveText(name,text){
+  const blob=new Blob([text],{type:"text/plain;charset=utf-8"});
+  if(!P.Filesystem){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click();return{where:"Téléchargements"}}
+  const data=await toB64(blob);
+  for(const dir of ["DOCUMENTS","EXTERNAL"]){
+    try{const r=await P.Filesystem.writeFile({path:"TraducteurRuFr/"+name,data,directory:dir,recursive:true});
+      return{uri:r.uri,where:dir==="DOCUMENTS"?"Documents/TraducteurRuFr":"Android/data/com.sergeivswalid.app/files/TraducteurRuFr"}}catch(e){}
+  }
+  throw new Error("Écriture impossible");
+}
+const tc=(t,sep)=>{t=Math.max(0,t);const h=Math.floor(t/3600),m=Math.floor(t%3600/60),s=Math.floor(t%60),ms=Math.floor((t%1)*1000);
+  return String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")+":"+String(s).padStart(2,"0")+sep+String(ms).padStart(3,"0")};
+function srt(segs){return segs.map((x,i)=>`${i+1}\n${tc(x.s,",")} --> ${tc(Math.max(x.e,x.s+1),",")}\n${x.fr}\n`).join("\n")}
+function renderOut(){
+  const ru=$("showru").checked;
+  $("out").textContent=segsAll.map(x=>x.fr+(ru&&x.ru?"\n   ["+x.ru+"]":"")).join("\n");
+}
+/* ---------- fichier ---------- */
+$("pick").onclick=()=>$("file").click();
+$("file").onchange=()=>{file=$("file").files[0]||null;$("fname").textContent=file?`${file.name} · ${(file.size/1048576).toFixed(1)} Mo`:""};
+let wl=null;
+async function wake(on){try{if(on&&navigator.wakeLock)wl=await navigator.wakeLock.request("screen");else if(wl){await wl.release();wl=null}}catch(e){}}
+$("stop").onclick=()=>{cancel=true;st("Annulation…")};
+$("go").onclick=async()=>{
+  if(busy){st("Une opération est déjà en cours.");return}
+  if(!file){st("Choisis d'abord un fichier audio ou vidéo.");return}
+  busy=true;cancel=false;segsAll=[];$("out").textContent="";wake(true);$("go").disabled=true;
+  try{
+    if(file.size>80*1048576&&!confirm("Fichier volumineux : le décodage peut saturer la mémoire du téléphone. Continuer ?"))throw new Error("Annulé.");
+    st("Décodage de l'audio…");const audio=await decodeFile(file);
+    const CH=(online?90:60)*16000,total=Math.ceil(audio.length/CH),pre=`swc:${online?"on":"off"}:${$("prec").value}:${file.name}:${file.size}:`;
+    for(let i=0;i<total&&!cancel;i++){
+      const off=i*CH/16000;let segs=null;
+      try{segs=JSON.parse(localStorage.getItem(pre+i)||"null")}catch(e){}
+      if(!segs){
+        const win=audio.subarray(i*CH,Math.min(audio.length,(i+1)*CH));
+        st(`Traitement ${i+1}/${total}…`);
+        segs=rms(win)<0.002?[]:await chunkSegs(win);
+        if(cancel)break;
+        try{localStorage.setItem(pre+i,JSON.stringify(segs))}catch(e){}
+      }
+      segs.forEach(x=>segsAll.push({s:x.s+off,e:x.e+off,ru:x.ru,fr:x.fr}));
+      renderOut();setBar(100*(i+1)/total);
+    }
+    if(cancel){st("Annulé. Relance : les parties déjà faites sont reprises.")}
+    else{
+      const base=file.name.replace(/\.[^.]+$/,"");
+      const a=await saveText(base+"_fr.txt",segsAll.map(x=>x.fr).join("\n"));
+      await saveText(base+"_ru.txt",segsAll.map(x=>x.ru).join("\n"));
+      const s=await saveText(base+"_fr.srt",srt(segsAll));window._srt=s;
+      st("Terminé. Fichiers dans "+a.where+" : "+base+"_fr.txt / _ru.txt / _fr.srt");
+    }
+  }catch(e){st("Erreur : "+(e.message||e))}
+  busy=false;wake(false);$("go").disabled=false;setTimeout(()=>setBar(0),1200);
+};
+$("cp").onclick=async()=>{try{await navigator.clipboard.writeText(segsAll.map(x=>x.fr).join("\n"));st("Copié.")}catch(e){st("Copie impossible.")}};
+$("shr").onclick=async()=>{if(window._srt&&window._srt.uri&&P.Share)try{await P.Share.share({url:window._srt.uri})}catch(e){}else st("Aucun .srt à partager pour l'instant.")};
+$("cc").onclick=()=>{Object.keys(localStorage).filter(k=>k.startsWith("swc:")).forEach(k=>localStorage.removeItem(k));st("Reprise vidée.")};
+$("showru").addEventListener("change",renderOut);
+/* ---------- direct plein écran ---------- */
+let L={on:false,stream:null,ctx:null,proc:null,buf:[],len:0,quiet:0,q:[],working:false,lines:[],size:28,ru:false,draft:""};
+function liveRender(){
+  const last=L.lines.slice(-8);
+  $("lt").style.fontSize=L.size+"px";
+  $("lt").innerHTML=last.map(x=>`<div>${esc2(x.fr)}${L.ru&&x.ru?`<div class="ru">${esc2(x.ru)}</div>`:""}</div>`).join("")+(L.draft?`<div class="dr">${esc2(L.draft)}</div>`:"");
+}
+const esc2=s=>String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+async function liveWork(){
+  if(L.working)return;L.working=true;
+  while(L.q.length&&L.on){
+    if(L.q.length>4){L.q.splice(0,L.q.length-2);$("ls").textContent="Retard : segments sautés"}
+    const c=L.q.shift();L.draft="… traitement";liveRender();
+    try{const segs=await chunkSegs(c);segs.forEach(x=>{if(x.fr)L.lines.push(x)});$("ls").textContent=L.q.length?`File d'attente : ${L.q.length}`:""}
+    catch(e){$("ls").textContent="Erreur : "+(e.message||e)}
+    L.draft="";liveRender();
+  }
+  L.working=false;
+}
+function liveCut(){
+  if(!L.len)return;const c=new Float32Array(L.len);let o=0;L.buf.forEach(b=>{c.set(b,o);o+=b.length});L.buf=[];L.len=0;L.quiet=0;
+  if(rms(c)>0.004){L.q.push(c);liveWork()}
+}
+async function liveStart(){
+  if(busy){st("Une opération est déjà en cours.");return}
+  if(!online){try{await getASR();await getMT()}catch(e){st("Hors-ligne : télécharge d'abord les modèles. "+(e.message||e));return}}
+  else if(!$("key").value.trim()){st("Entre ta clé API Gemini (onglet Réglages).");return}
+  try{
+    L.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}});
+    L.ctx=new (window.AudioContext||window.webkitAudioContext)({sampleRate:16000});
+    const src=L.ctx.createMediaStreamSource(L.stream);L.proc=L.ctx.createScriptProcessor(4096,1,1);src.connect(L.proc);L.proc.connect(L.ctx.destination);
+    const minS=(online?4:6)*16000,maxS=(online?10:12)*16000;
+    L.proc.onaudioprocess=e=>{const d=new Float32Array(e.inputBuffer.getChannelData(0));L.buf.push(d);L.len+=d.length;
+      if(rms(d)<0.006)L.quiet+=d.length;else L.quiet=0;
+      if(L.len>=maxS||(L.len>=minS&&L.quiet>=8000))liveCut()};
+    L.on=true;L.lines=[];L.draft="";L.q=[];$("live").classList.remove("hide");liveRender();wake(true);$("ls").textContent="Écoute…";
+  }catch(e){st("Micro indisponible : "+(e.message||e))}
+}
+async function liveStop(){
+  L.on=false;try{L.proc&&L.proc.disconnect();L.ctx&&L.ctx.close();L.stream&&L.stream.getTracks().forEach(t=>t.stop())}catch(e){}
+  $("live").classList.add("hide");wake(false);
+  if(L.lines.length){
+    const d=new Date(),n="direct_"+d.getFullYear()+String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0")+"_"+String(d.getHours()).padStart(2,"0")+String(d.getMinutes()).padStart(2,"0");
+    try{const a=await saveText(n+"_fr.txt",L.lines.map(x=>x.fr).join("\n"));await saveText(n+"_ru.txt",L.lines.map(x=>x.ru).join("\n"));st("Direct enregistré dans "+a.where+" : "+n+"_fr.txt")}catch(e){st("Direct terminé (enregistrement impossible).")}
+  }
+}
+$("golive").onclick=liveStart;$("lq").onclick=liveStop;
+$("lp").onclick=()=>{L.size=Math.min(80,L.size+4);liveRender()};$("lm").onclick=()=>{L.size=Math.max(14,L.size-4);liveRender()};
+$("lr").onclick=()=>{L.ru=!L.ru;liveRender()};$("lx").onclick=()=>{L.lines=[];liveRender()};
+</script></body></html>
